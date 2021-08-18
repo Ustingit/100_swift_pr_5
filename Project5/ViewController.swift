@@ -15,6 +15,7 @@ class ViewController: UITableViewController {
         super.viewDidLoad()
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(promptForAnswer))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .play, target: self, action: #selector(startGame))
         
         if let startWordsUrl = Bundle.main.url(forResource: "start", withExtension: "txt") {
             if let startWords = try? String(contentsOf: startWordsUrl) {
@@ -47,36 +48,53 @@ class ViewController: UITableViewController {
     func submit(_ answer: String) {
         let lowerVariant = answer.lowercased()
         
-        let errorMessage: String
-        let errorTitle: String
-        
         if isPossible(word: lowerVariant) {
             if isOriginal(word: lowerVariant) {
                 if isReal(word: lowerVariant) {
-                    usedWords.insert(answer, at: 0)
-                    
-                    let indexPath = IndexPath(row: 0, section: 0)
-                    tableView.insertRows(at: [indexPath], with: .automatic)
-                    
-                    return
+                    if isNotOriginalWord(word: lowerVariant) {
+                        if isShorterThanThreeLetters(word: lowerVariant) {
+                            usedWords.insert(answer, at: 0)
+                            
+                            let indexPath = IndexPath(row: 0, section: 0)
+                            tableView.insertRows(at: [indexPath], with: .automatic)
+                            
+                            return
+                        } else {
+                            showErrorMessage(errorTitle: "Word is too short", errorMessage: "Please type a word with length more than 2 symbols!")
+                        }
+                    } else {
+                        showErrorMessage(errorTitle: "Words are the same", errorMessage: "You have to choose another word!")
+                    }
                 } else {
-                    errorTitle = "Word not recognized"
-                    errorMessage = "You can't just make them up, you know!"
+                    showErrorMessage(errorTitle: "Word not recognized", errorMessage: "You can't just make them up, you know!")
                 }
             } else {
-                errorTitle = "Word already used"
-                errorMessage = "Be more original!"
+                showErrorMessage(errorTitle: "Word already used", errorMessage: "Be more original!")
             }
         } else {
             guard let title = title else { return }
             
-            errorTitle = "Word not possible"
-            errorMessage = "You can't spell this word from \(title.lowercased())"
+            showErrorMessage(errorTitle: "Word not possible", errorMessage: "You can't spell this word from \(title.lowercased())")
         }
-        
+    }
+    
+    func showErrorMessage(errorTitle: String, errorMessage: String) -> Void {
         let ac = UIAlertController(title: errorTitle, message: errorMessage, preferredStyle: .alert)
         ac.addAction(UIAlertAction(title: "OK", style: .default))
+        
         present(ac, animated: true)
+    }
+    
+    func isShorterThanThreeLetters(word: String) -> Bool {
+        return word.count > 2;
+    }
+    
+    func isNotOriginalWord(word: String) -> Bool {
+        guard let origin = title?.lowercased() else {
+            return false
+        }
+        
+        return word != origin
     }
     
     func isPossible(word: String) -> Bool
@@ -110,7 +128,7 @@ class ViewController: UITableViewController {
         return misspelledRange.location == NSNotFound
     }
     
-    func startGame() {
+    @objc func startGame() {
         title = allWords.randomElement()
         usedWords.removeAll(keepingCapacity: true)
         tableView.reloadData()
